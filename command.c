@@ -40,7 +40,7 @@ void scommand_push_back(scommand self, char* argument) {
 
 void scommand_pop_front(scommand self) {
     assert(self != NULL && !scommand_is_empty(self));
-    Glist* aux = g_list_first(self->comm);
+    GList* aux = g_list_first(self->comm);
     free(aux->data);
     self->comm = g_list_remove(self->comm, aux->data);
 }
@@ -86,7 +86,57 @@ char * scommand_get_redir_out(const scommand self) {
 
 char * scommand_to_string(const scommand self) {
     assert(self != NULL);
-    
 
     assert(scommand_is_empty(self) || scommand_get_redir_in(self) == NULL || scommand_get_redir_out(self) == NULL || strlen(res) > 0);
+}
+
+struct pipeline_s {
+    GList* comm;
+    bool ind;
+};
+
+pipeline pipeline_new(void) {
+    pipeline res = malloc(sizeof(struct pipeline_s));
+    res->comm = NULL;
+    res->ind = true;
+    assert(res != NULL && pipeline_is_empty(res) && pipeline_get_wait(res));
+    return res;
+}
+
+pipeline pipeline_destroy(pipeline self) {
+    assert(self != NULL);
+    g_list_free_full(self->comm, (GDestroyNotify)scommand_destroy);
+    g_list_free(self->comm);
+    free(self);
+    assert(self == NULL);
+    return NULL;
+}
+
+void pipeline_push_back(pipeline self, scommand sc) {
+    assert(self != NULL && sc != NULL);
+    self->comm = g_list_append(self->comm, sc);
+    assert(!pipeline_is_empty(self));
+}
+
+void pipeline_pop_front(pipeline self) {
+    assert(self != NULL && !pipeline_is_empty(self));
+    GList* aux = g_list_first(self->comm);
+    scommand_destroy(aux->data);
+    self->comm = g_list_remove(self->comm, aux->data);
+}
+
+void pipeline_set_wait(pipeline self, const bool w) {
+    assert(self != NULL);
+    self->ind = w;
+}
+
+bool pipeline_is_empty(const pipeline self) {
+    assert(self != NULL);
+    return g_list_length(self->comm) == 0;
+}
+
+unsigned int pipeline_length(const pipeline self) {
+    assert(self != NULL);
+    return g_list_length(self->comm);
+    assert((pipeline_length(self) == 0) == pipeline_is_empty(self));
 }

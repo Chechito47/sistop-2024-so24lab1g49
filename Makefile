@@ -23,7 +23,7 @@ $(TARGET): $(OBJECTS) $(PRECOMPILED) obfuscated.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 %.o: %.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@ $(LDFLAGS)
 
 obfuscated.o: obfuscated.c
 	$(CC) $(OBFUSCATED_CFLAGS) -c $< -o $@
