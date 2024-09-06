@@ -86,8 +86,34 @@ char * scommand_get_redir_out(const scommand self) {
 
 char * scommand_to_string(const scommand self) {
     assert(self != NULL);
-
+    GString* aux = g_string_new(NULL);
+    // assert(aux != NULL); debug
+    unsigned int length = g_list_length(self->comm);
+    for (unsigned int i = 0; i < length ; i++)
+    {
+        char* cmd_str = g_list_nth_data(self->comm, i);
+        // assert(cmd_str != NULL); debug
+        g_string_append(aux, cmd_str);
+        g_string_append(aux, " ");
+    }
+    if (scommand_get_redir_in(self) != NULL)
+    {
+        g_string_append(aux, "< ");
+        g_string_append(aux, scommand_get_redir_in(self));
+        g_string_append(aux, " ");
+    }
+    if (scommand_get_redir_out(self) != NULL)
+    {
+        g_string_append(aux, "> ");
+        g_string_append(aux, scommand_get_redir_out(self));
+        g_string_append(aux, " ");
+    }
+    char* res = g_string_free(aux, FALSE);
+    // assert(res != NULL); debug
+    // posteriormente tendria que hacer g_free(res)
+    
     assert(scommand_is_empty(self) || scommand_get_redir_in(self) == NULL || scommand_get_redir_out(self) == NULL || strlen(res) > 0);
+    return res;
 }
 
 struct pipeline_s {
@@ -105,10 +131,15 @@ pipeline pipeline_new(void) {
 
 pipeline pipeline_destroy(pipeline self) {
     assert(self != NULL);
-    g_list_free_full(self->comm, (GDestroyNotify)scommand_destroy);
-    g_list_free(self->comm);
+    while (self->comm != NULL)
+    {
+        GList* aux = self->comm;
+        scommand_destroy(aux->data);
+        self->comm = self->comm->next;
+        g_list_free_1(aux);
+
+    }
     free(self);
-    assert(self == NULL);
     return NULL;
 }
 
@@ -139,4 +170,40 @@ unsigned int pipeline_length(const pipeline self) {
     assert(self != NULL);
     return g_list_length(self->comm);
     assert((pipeline_length(self) == 0) == pipeline_is_empty(self));
+}
+
+scommand pipeline_front(const pipeline self) {
+    assert(self != NULL && !pipeline_is_empty(self));
+
+    assert(self->comm != NULL);
+    return self->comm->data;
+}
+
+bool pipeline_get_wait(const pipeline self) {
+    assert(self != NULL);
+    return self->ind;
+}
+
+char * pipeline_to_string(const pipeline self) {
+    assert(self != NULL);
+    GString* aux = g_string_new(NULL);
+    unsigned int length = g_list_length(self->comm);
+    for (unsigned int i = 0; i < length ; i++)
+    {
+        char* cmd_str = scommand_to_string(g_list_nth_data(self->comm, i));
+        g_string_append(aux, cmd_str);
+        if (i < length - 1)
+        {
+            g_string_append(aux, "| ");
+        }
+    }
+    if (!pipeline_get_wait(self))
+    {
+        g_string_append(aux, "& ");
+    }
+    char* res = g_string_free(aux, FALSE);
+    // posteriormente tendria que hacer g_free(res)
+    
+    assert(pipeline_is_empty(self) || pipeline_get_wait(self) || strlen(res) > 0);
+    return res;
 }
