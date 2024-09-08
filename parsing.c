@@ -32,21 +32,21 @@ static scommand parse_scommand(Parser p) {
 
 pipeline parse_pipeline(Parser p) {
    assert(p != NULL && !parser_at_eof(p));
-	//pipeline res = pipeline_new();
-	pipeline res = NULL;
-   //scommand comm = NULL;
-   scommand comm = parse_scommand(p);
-   bool error = (comm==NULL), another_pipe = true, is_background = false, garbage = false;
+	pipeline res = pipeline_new();
+   scommand comm = NULL;
+   //scommand comm = parse_scommand(p);
+   bool error = false, another_pipe = true, is_background = false, garbage = false;
 
+   /*
    if(!error) {
       res = pipeline_new();
       pipeline_push_back(res, comm);
       parser_op_pipe(p, &another_pipe);
    }
-
+   */
    while (another_pipe && !error) {
       comm = parse_scommand(p);
-      error = (comm==NULL);
+      error = (scommand_is_empty(comm));
       pipeline_push_back(res, comm);
       parser_op_pipe(p, &another_pipe);
    /*
@@ -58,7 +58,7 @@ pipeline parse_pipeline(Parser p) {
    */
    }  
     //pipeline_push_back(result, cmd);
-    parser_skip_blanks(p);
+    //parser_skip_blanks(p);
     /* 
     bool is_pipe = false;
     parser_op_pipe(p, &is_pipe);
@@ -77,11 +77,11 @@ pipeline parse_pipeline(Parser p) {
 
 	//bool garbage = false;
 	parser_garbage(p, &garbage);
-	if(garbage){
+	if(garbage || error){
 		pipeline_destroy(res);
 		res = NULL;
       printf("Error\n");
-      return NULL;
+      //return NULL;
 	}
 
    return res;
