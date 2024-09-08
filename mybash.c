@@ -28,10 +28,11 @@ int main(int argc, char *argv[]) {
 
         /* Hay que salir luego de ejecutar? */
         quit = parser_at_eof(input);
-        /*
-         * COMPLETAR
-         *
-         */
+        if (pipe != NULL) {
+            execute_pipeline(pipe);
+            pipeline_destroy(pipe);
+            pipe = NULL;
+        }
     }
     parser_destroy(input); input = NULL;
     return EXIT_SUCCESS;
