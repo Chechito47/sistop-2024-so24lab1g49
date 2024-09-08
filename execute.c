@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <assert.h>
+#include <assert.h>                     //Asserts
 #include <glib.h>
-#include <fcntl.h>
+#include <fcntl.h>                      //For open
+#include <unistd.h>                     //For dup2 and close
+#include <sys/wait.h>                   //For wait
 
 #include "builtin.h"
 #include "command.h"
@@ -30,7 +32,7 @@ x:y:xs (con xs!=[]) -> execute_multiple_scommand -> crear un pipe, hacer el fork
 static void execute_extern(scommand comm) {
     assert(comm != NULL && !scommand_is_empty(comm));
     unsigned int comm_length = scommand_length(comm);                       //Get the length of the command
-    char *arg_list[] = calloc(comm_length + 1, sizeof(char*));              //+1 due the use of *args_comm[]
+    char **arg_list = calloc(comm_length + 1, sizeof(char*));              //+1 due the use of *args_comm[]
     for (unsigned int i; i < comm_length; i++) {
         arg_list[i] = strdup(scommand_front(comm));                         //Saves the pointer of front char of a sequence of chars
         scommand_pop_front(comm);                                           //Takes put the char of front
@@ -40,8 +42,8 @@ static void execute_extern(scommand comm) {
     char *redir_out = scommand_get_redir_out(comm);
     
     if (redir_in != NULL) {                                                 //If stdin is not null
-        unsigned int fd_redir_in = open(redir_in, O_RDONLY, O_WRONLY);      //Declarate an aux to open redir_in in read only and gives write permission. S_IRWXU instead of WRONLY
-        if(fd_redir_in < 0 || fd_redir_in == NULL){                         //If is negative error opening the file
+        int fd_redir_in = open(redir_in, O_RDONLY, O_WRONLY);               //Declarate an aux to open redir_in in read only and gives write permission. S_IRWXU instead of WRONLY
+        if(fd_redir_in < 0) {                                               //If is negative error opening the file
             fprintf(stderr, "Error opening the file. bash: %s\n", redir_in);
             exit(EXIT_FAILURE);
         }
@@ -50,12 +52,12 @@ static void execute_extern(scommand comm) {
     }
 
     if (redir_out != NULL) {                                                //If stdout is not null
-        unsigned int fd_redir_out = open(redir_out, O_CREAT | O_WRONLY);    //Declarate an aux to open (or create if not exist) redir_out in only write mode
-        if(fd_redir_out < 0 || fd_redir_out == NULL){                       //If is negative error opening the file
+        int fd_redir_out = open(redir_out, O_CREAT | O_WRONLY, 0666);             //Declarate an aux to open (or create if not exist) redir_out in only write mode
+        if(fd_redir_out < 0)    {                                           //If is negative error opening the file
             fprintf(stderr, "Error opening the file. bash: %s\n", redir_out);
             exit(EXIT_FAILURE);
         }
-        dup2(fd_redir_out, 0);                                              //Redirect the content of fd_redir_out to stdout
+        dup2(fd_redir_out, 1);                                              //Redirect the content of fd_redir_out to stdout
         close(fd_redir_out);                                                //Close fd_redir_out
     }
 
@@ -79,7 +81,7 @@ static void execute_single_pipeline(pipeline apipe) {
         printf("Error couldn't create child, fork failed\n");
         exit(EXIT_FAILURE);
     } else if (pid == 0) {                                                  //If pid==0 is the child
-        execute_command(pipeline_front(apipe));
+        execute_extern(pipeline_front(apipe));
     } else if (pipeline_get_wait(apipe)) {                                  //If pid>0 is the parent
         wait(NULL);                                                         //waitpid(pid, NULL, 0);
     }
@@ -90,6 +92,7 @@ static void execute_single_pipeline(pipeline apipe) {
 
 //Execute a pipeline of two command making two fork and one pipe
 //Requires: apipe!=NULL && apipe length(apipe)==2
+/*
 static void execute_double_pipeline(pipeline apipe) {
     assert(apipe != NULL && pipeline_length(apipe) == 2);                   //IDEM as single pipeline with pipeline_length==2
     pid_t pid = fork();                                                     //Make fork
@@ -111,7 +114,7 @@ static void execute_double_pipeline(pipeline apipe) {
         waitpid(pid, NULL, 0);
     }
 }
-
+*/
 
 
 //Execute a pipeline making calls to different functions
@@ -120,18 +123,18 @@ static void execute_double_pipeline(pipeline apipe) {
 //  Execute one external command
 //  Execute two external command chained by a pipe
 //Requires: cmd!=NULL && pipeline_length(apipe)>3
-void execute_pipeline(apipe) {
+void execute_pipeline(pipeline apipe) {
     assert(apipe != NULL);                                                  //Check assert
 
-    if (pipeline_is_empty(apipe)) {                                         //If apipe==NULL => go back to wait for an input 
+    if (pipeline_is_empty(apipe)) {                                         //If not pipeline => go back to wait for an input 
         printf("Non entry found, blank input\n");
         return;
     } else if (builtin_alone(apipe)) {                                      //If apipe is a builtin command => builtin_run (it's an internal command)
         builtin_run(pipeline_front(apipe));                                 //pipeline_front because if it's a builtin then it's going to be single command => help, cd, exit
     } else if (pipeline_length(apipe) == 1) {                               //If pipeline_length == 1 then call the function to execute a single pipeline
         execute_single_pipeline(apipe);
-    } else if (pipeline_length(apipe) == 2) {                               //If pipeline_length == 2 then call the function to execute two pipelines
-        execute_double_pipeline(apipe);
+    //} else if (pipeline_length(apipe) == 2) {                               //If pipeline_length == 2 then call the function to execute two pipelines
+    //    execute_double_pipeline(apipe);
     } else {                                                                //Else error => don't have execute_pipeline for multiple pipelines
         printf("Invalid input\n");
         return;

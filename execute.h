@@ -7,7 +7,8 @@
 
 #include "command.h"
 
-void execute_extern(scommand comm);
+//void execute_extern(scommand comm);
+void execute_pipeline(pipeline apipe);
 /*
  * Ejecuta un como externo sin hacer fork
  *   redirigiendo la entrada stdin y salida stdout
