@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #include "parsing.h"
 #include "parser.h"
@@ -25,27 +26,40 @@ static scommand parse_scommand(Parser p) {
       }else{
         break;
     }
-    
    }  
    return new_cmd;
 }
 
 pipeline parse_pipeline(Parser p) {
-	pipeline result = pipeline_new();
-	scommand cmd = NULL;
-    bool error = false, another_pipe=true, is_background=false;  
-    
-    while (another_pipe && !error) {
-     cmd = parse_scommand(p);
-    if(cmd==NULL){
+   assert(p != NULL && !parser_at_eof(p));
+	//pipeline res = pipeline_new();
+	pipeline res = NULL;
+   //scommand comm = NULL;
+   scommand comm = parse_scommand(p);
+   bool error = (comm==NULL), another_pipe = true, is_background = false, garbage = false;
+
+   if(!error) {
+      res = pipeline_new();
+      pipeline_push_back(res, comm);
+      parser_op_pipe(p, &another_pipe);
+   }
+
+   while (another_pipe && !error) {
+      comm = parse_scommand(p);
+      error = (comm==NULL);
+      pipeline_push_back(res, comm);
+      parser_op_pipe(p, &another_pipe);
+   /*
+   if(cmd==NULL){
     	printf("Error");
     	pipeline_destroy(result);
     	return NULL;
-    }
-     
-    pipeline_push_back(result, cmd);
+   }
+   */
+   }  
+    //pipeline_push_back(result, cmd);
     parser_skip_blanks(p);
-     
+    /* 
     bool is_pipe = false;
     parser_op_pipe(p, &is_pipe);
      
@@ -55,17 +69,20 @@ pipeline parse_pipeline(Parser p) {
      	another_pipe = false;
      }
 }
-     
-	parser_op_background(p,&is_background);
-	pipeline_set_wait(result, is_background);	
+   */
+	parser_op_background(p, &is_background);
+   if (is_background) {
+      pipeline_set_wait(res, false);
+   }
 
-	bool garbage = false;
+	//bool garbage = false;
 	parser_garbage(p, &garbage);
 	if(garbage){
-		pipeline_destroy(result);
-		return NULL;
+		pipeline_destroy(res);
+		res = NULL;
+      printf("Error\n");
+      return NULL;
 	}
 
-   return result;
+   return res;
 }
-
