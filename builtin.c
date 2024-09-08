@@ -7,6 +7,7 @@
 
 #include "command.h"
 #include "builtin.h"
+#include "tests/syscall_mock.h"
 
 #define COUNT_INTERNAL 3                                    //cantidad de comandos internos
 char *internal[COUNT_INTERNAL] = {"cd", "help", "exit"};    //lista de comandos simples
@@ -30,6 +31,8 @@ bool builtin_alone(pipeline p)
 {
     assert(p != NULL);
     assert(pipeline_length(p) == 1 && builtin_is_internal(pipeline_front(p)));
+
+    return true;
 }
 
 void builtin_run(scommand cmd)
