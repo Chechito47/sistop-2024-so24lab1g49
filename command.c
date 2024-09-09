@@ -25,7 +25,6 @@ scommand scommand_new(void) {
 scommand scommand_destroy(scommand self) {
     assert(self != NULL);
     g_list_free_full(self->comm, free);
-    g_list_free(self->comm);
     free(self->redir_in);
     free(self->redir_out);
     free(self);
@@ -42,7 +41,8 @@ void scommand_pop_front(scommand self) {
     assert(self != NULL && !scommand_is_empty(self));
     GList* aux = g_list_first(self->comm);
     free(aux->data);
-    self->comm = g_list_remove(self->comm, aux->data);
+    self->comm = g_list_remove_link(self->comm, aux);
+    g_list_free_1(aux);
 }
 
 void scommand_set_redir_in(scommand self, char* filename) {
@@ -152,8 +152,12 @@ void pipeline_push_back(pipeline self, scommand sc) {
 void pipeline_pop_front(pipeline self) {
     assert(self != NULL && !pipeline_is_empty(self));
     GList* aux = g_list_first(self->comm);
-    scommand_destroy(aux->data);
-    self->comm = g_list_remove(self->comm, aux->data);
+    if (aux != NULL)
+    {
+        scommand_destroy(aux->data);
+        self->comm = g_list_remove_link(self->comm, aux);
+        g_list_free_1(aux);
+    }
 }
 
 void pipeline_set_wait(pipeline self, const bool w) {
