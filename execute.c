@@ -7,6 +7,8 @@
 #include <fcntl.h>                      //For open
 #include <unistd.h>                     //For dup2 and close
 #include <sys/wait.h>                   //For wait
+//#include <sys/types.h>
+//#include <sys/stat.h>
 
 #include "builtin.h"
 #include "command.h"
@@ -33,7 +35,7 @@ static void execute_extern(scommand comm) {
     assert(comm != NULL && !scommand_is_empty(comm));
     unsigned int comm_length = scommand_length(comm);                       //Get the length of the command
     char **arg_list = calloc(comm_length + 1, sizeof(char*));              //+1 due the use of *args_comm[]
-    for (unsigned int i; i < comm_length; i++) {
+    for (unsigned int i = 0; i < comm_length; i++) {
         arg_list[i] = strdup(scommand_front(comm));                         //Saves the pointer of front char of a sequence of chars
         scommand_pop_front(comm);                                           //Takes put the char of front
     }
@@ -42,7 +44,7 @@ static void execute_extern(scommand comm) {
     char *redir_out = scommand_get_redir_out(comm);
     
     if (redir_in != NULL) {                                                 //If stdin is not null
-        int fd_redir_in = open(redir_in, O_RDONLY, O_WRONLY);               //Declarate an aux to open redir_in in read only and gives write permission. S_IRWXU instead of WRONLY
+        int fd_redir_in = open(redir_in, O_CREAT | O_RDONLY, 0666);               //Declarate an aux to open redir_in in read only and gives write permission. S_IRWXU instead of WRONLY
         if(fd_redir_in < 0) {                                               //If is negative error opening the file
             fprintf(stderr, "Error opening the file. bash: %s\n", redir_in);
             exit(EXIT_FAILURE);
@@ -60,13 +62,15 @@ static void execute_extern(scommand comm) {
         dup2(fd_redir_out, 1);                                              //Redirect the content of fd_redir_out to stdout
         close(fd_redir_out);                                                //Close fd_redir_out
     }
-
-    free(redir_in);                                                         //Free redir_in and out from memory
-    free(redir_out);
+    
+    //free(redir_in);                                                         //Free redir_in and out from memory
+    //free(redir_out);
     if (execvp(arg_list[0], arg_list) == -1) {                              //If replace the process failed
         fprintf(stderr, "Invalid command: %s.\n", arg_list[0]);
         exit(EXIT_FAILURE);
     }
+    free(redir_in);
+    free(redir_out);
 }
 
 
@@ -75,17 +79,23 @@ static void execute_extern(scommand comm) {
 //Requires: apipe!=NULL && apipe length==1
 static void execute_single_pipeline(pipeline apipe) {
     assert(apipe != NULL && pipeline_length(apipe) == 1);                   //Check assert
-    pid_t pid = fork();                                                     //Make fork
+    pid_t pid = fork();                                                    //Make fork
+    unsigned int child_quantity = 0;
 
     if (pid < 0) {                                                          //If pid<0 =>error
         printf("Error couldn't create child, fork failed\n");
         exit(EXIT_FAILURE);
     } else if (pid == 0) {                                                  //If pid==0 is the child
         execute_extern(pipeline_front(apipe));
-    } else if (pipeline_get_wait(apipe)) {                                  //If pid>0 is the parent
-        wait(NULL);                                                         //waitpid(pid, NULL, 0);
+    } else {
+            if (pipeline_get_wait(apipe)) {                                  //If pid>0 is the parent
+            wait(NULL);                                                         //waitpid(pid, NULL, 0);
+        }
+    child_quantity++;
+    pipeline_pop_front(apipe);
     }
     //pipeline_pop_front(apipe);
+    assert(child_quantity == 1);
 }
 
 
@@ -115,6 +125,7 @@ static void execute_double_pipeline(pipeline apipe) {
     }
 }
 */
+
 
 
 //Execute a pipeline making calls to different functions
