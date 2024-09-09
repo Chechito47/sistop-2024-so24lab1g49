@@ -37,7 +37,7 @@ x:y:xs (con xs!=[]) -> execute_multiple_scommand -> crear un pipe, hacer el fork
 static void execute_extern(scommand comm) {
     assert(comm != NULL && !scommand_is_empty(comm));
     unsigned int comm_length = scommand_length(comm);                       //Get the length of the command
-    char **arg_list = calloc(comm_length + 1, sizeof(char*));              //+1 due the use of *args_comm[]
+    char **arg_list = calloc(comm_length + 1, sizeof(char*));               //+1 due the use of *args_comm[]
     for (unsigned int i = 0; i < comm_length; i++) {
         arg_list[i] = strdup(scommand_front(comm));                         //Saves the pointer of front char of a sequence of chars
         scommand_pop_front(comm);                                           //Takes put the char of front
@@ -47,9 +47,9 @@ static void execute_extern(scommand comm) {
     char *redir_out = scommand_get_redir_out(comm);
     
     if (redir_in != NULL) {                                                 //If stdin is not null
-        int fd_redir_in = open(redir_in, O_CREAT | O_RDONLY, 0666);               //Declarate an aux to open redir_in in read only and gives write permission. S_IRWXU instead of WRONLY
+        int fd_redir_in = open(redir_in, O_RDONLY, 0666);                   //Declarate an aux to open redir_in in read only and gives write permission. S_IRWXU instead of WRONLY
         if(fd_redir_in < 0) {                                               //If is negative error opening the file
-            fprintf(stderr, "Error opening the file. bash: %s\n", redir_in);
+            fprintf(stderr, "Error: file or directory '%s' doesn't exists\n", redir_in);
             exit(EXIT_FAILURE);
         }
         dup2(fd_redir_in, 0);                                               //Redirect the content of fd_redir_in to stdin
@@ -57,19 +57,19 @@ static void execute_extern(scommand comm) {
     }
 
     if (redir_out != NULL) {                                                //If stdout is not null
-        int fd_redir_out = open(redir_out, O_CREAT | O_WRONLY, 0666);             //Declarate an aux to open (or create if not exist) redir_out in only write mode
+        int fd_redir_out = open(redir_out, O_CREAT | O_WRONLY, 0666);       //Declarate an aux to open (or create if not exist) redir_out in only write mode
         if(fd_redir_out < 0)    {                                           //If is negative error opening the file
-            fprintf(stderr, "Error opening the file. bash: %s\n", redir_out);
+            fprintf(stderr, "Error: file or directory '%s' doesn't exists\n", redir_out);
             exit(EXIT_FAILURE);
         }
         dup2(fd_redir_out, 1);                                              //Redirect the content of fd_redir_out to stdout
         close(fd_redir_out);                                                //Close fd_redir_out
     }
     
-    //free(redir_in);                                                         //Free redir_in and out from memory
+    //free(redir_in);                                                       //Free redir_in and out from memory
     //free(redir_out);
     if (execvp(arg_list[0], arg_list) == -1) {                              //If replace the process failed
-        fprintf(stderr, "Invalid command: %s.\n", arg_list[0]);
+        fprintf(stderr, "Error: invalid command '%s'\n", arg_list[0]);
         exit(EXIT_FAILURE);
     }
     free(redir_in);
@@ -82,17 +82,17 @@ static void execute_extern(scommand comm) {
 //Requires: apipe!=NULL && apipe length==1
 static void execute_single_pipeline(pipeline apipe) {
     assert(apipe != NULL && pipeline_length(apipe) == 1);                   //Check assert
-    pid_t pid = fork();                                                    //Make fork
+    pid_t pid = fork();                                                     //Make fork
     unsigned int child_quantity = 0;
 
     if (pid < 0) {                                                          //If pid<0 =>error
-        printf("Error couldn't create child, fork failed\n");
+        printf("Error: fork failed\n");
         exit(EXIT_FAILURE);
     } else if (pid == 0) {                                                  //If pid==0 is the child
         execute_extern(pipeline_front(apipe));
     } else {
-            if (pipeline_get_wait(apipe)) {                                  //If pid>0 is the parent
-            wait(NULL);                                                         //waitpid(pid, NULL, 0);
+            if (pipeline_get_wait(apipe)) {                                 //If pid>0 is the parent
+            wait(NULL);                                                     //waitpid(pid, NULL, 0);
         }
     child_quantity++;
     pipeline_pop_front(apipe);
@@ -116,16 +116,16 @@ static void execute_multiple_pipeline(pipeline apipe) {
     }
 
     pid_t pid = fork();   
-    //pipe(argv);                                                      //Declarete argv to make execvp
+    //pipe(argv);                                                           //Declarete argv to make execvp
 
     if (pid < 0) {                                                          //If pid<0 => error
-        printf("Error, couldn't create child, fork failed\n");
+        printf("Error: fork failed\n");
         exit(EXIT_FAILURE);
     }
-    if (pid == 0) {                                                  //If pid==0 => it's the child
+    if (pid == 0) {                                                         //If pid==0 => it's the child
         close(argv[STD_IN]);
         
-        dup2(argv[STD_OUT], STDOUT_FILENO);                                                      //Dup standar output => output of execute_extern(pipeline_front(apipe))
+        dup2(argv[STD_OUT], STDOUT_FILENO);                                 //Dup standar output => output of execute_extern(pipeline_front(apipe))
         close(argv[STD_OUT]);
         /*
         if (dup2(argv[STD_OUT], STDOUT_FILENO) == -1) {
@@ -164,7 +164,7 @@ static void execute_multiple_pipeline(pipeline apipe) {
     }
     wait(NULL);
     wait(NULL);
-    //if (pipeline_get_wait(apipe)) {                                         //Check if the pipeline has to wait before being execute or not (because now we don't have one)
+    //if (pipeline_get_wait(apipe)) {                                       //Check if the pipeline has to wait before being execute or not (because now we don't have one)
     //    waitpid(pid, NULL, 0);
     //}
 }
@@ -182,17 +182,15 @@ void execute_pipeline(pipeline apipe) {
     assert(apipe != NULL);                                                  //Check assert
 
     if (pipeline_is_empty(apipe)) {                                         //If not pipeline => go back to wait for an input 
-        printf("Non entry found, blank input\n");
+        printf("Error: blank input\n");
         return;
     } else if (builtin_alone(apipe)) {                                      //If apipe is a builtin command => builtin_run (it's an internal command)
         builtin_run(pipeline_front(apipe));                                 //pipeline_front because if it's a builtin then it's going to be single command => help, cd, exit
     } else if (pipeline_length(apipe) == 1) {                               //If pipeline_length == 1 then call the function to execute a single pipeline
         execute_single_pipeline(apipe);
-    //} else if (pipeline_length(apipe) == 2) {                               //If pipeline_length == 2 then call the function to execute two pipelines
-    //    execute_double_pipeline(apipe);
-    } else {                                                                //Else error => don't have execute_pipeline for multiple pipelines
+    } else if (pipeline_length(apipe) >= 2) {                               //If pipeline_length == 2 then call the function to execute two pipelines
         execute_multiple_pipeline(apipe);
-        //printf("Invalid input\n");
-        //return;
+    } else {                                                                //Else error => don't have execute_pipeline for multiple pipelines
+        return;
     }
 }

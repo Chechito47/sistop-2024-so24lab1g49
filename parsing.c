@@ -80,7 +80,7 @@ pipeline parse_pipeline(Parser p) {
 	if(garbage || error){
 		pipeline_destroy(res);
 		res = NULL;
-      printf("Error\n");
+      printf("Error: blank input\n");
       //return NULL;
 	}
 
