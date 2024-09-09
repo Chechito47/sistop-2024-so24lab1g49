@@ -16,6 +16,9 @@
 
 #include "tests/syscall_mock.h"
 
+#define STD_IN 0
+#define STD_OUT 1
+
 /*
 execute_pipeline(apipe)
 ([scommand], bool)
@@ -102,29 +105,70 @@ static void execute_single_pipeline(pipeline apipe) {
 
 //Execute a pipeline of two command making two fork and one pipe
 //Requires: apipe!=NULL && apipe length(apipe)==2
-/*
-static void execute_double_pipeline(pipeline apipe) {
-    assert(apipe != NULL && pipeline_length(apipe) == 2);                   //IDEM as single pipeline with pipeline_length==2
-    pid_t pid = fork();                                                     //Make fork
-    char *argv[3];                                                          //Declarete argv to make execvp
+static void execute_multiple_pipeline(pipeline apipe) {
+    assert(apipe != NULL && pipeline_length(apipe) >= 2);                   //IDEM as single pipeline with pipeline_length==2
+    //unsigned int length_pipe = pipeline_length(apipe);
+    int argv[2];
+
+    if (pipe(argv) < 0) {
+        printf("Error, pipe fail\n");
+        exit(EXIT_FAILURE);
+    }
+
+    pid_t pid = fork();   
+    //pipe(argv);                                                      //Declarete argv to make execvp
 
     if (pid < 0) {                                                          //If pid<0 => error
         printf("Error, couldn't create child, fork failed\n");
         exit(EXIT_FAILURE);
-    } else if (pid == 0) {                                                  //If pid==0 => it's the child
-        dup2(argv[1]);                                                      //Dup standar output => output of execute_extern(pipeline_front(apipe)) 
-        close(argv[0]);                                                     //Close what we opened
-        close(argv[1]);
-        close(argv[2]);
+    }
+    if (pid == 0) {                                                  //If pid==0 => it's the child
+        close(argv[STD_IN]);
+        
+        dup2(argv[STD_OUT], STDOUT_FILENO);                                                      //Dup standar output => output of execute_extern(pipeline_front(apipe))
+        close(argv[STD_OUT]);
+        /*
+        if (dup2(argv[STD_OUT], STDOUT_FILENO) == -1) {
+            printf("Error, error with dup2\n");
+            exit(EXIT_FAILURE);
+        }
+        if (close(argv[STD_OUT]) == -1) {
+            printf("Error, error with file descriptor\n");
+            exit(EXIT_FAILURE);
+        }*/
         execute_extern(pipeline_front(apipe));                              //Execute command as an external
-    }
-    //pipeline_pop_front(apipe);
+        pipeline_pop_front(apipe);
+    } else if (pid > 0) {
+        close(argv[STD_OUT]);
 
-    if (pipeline_get_wait(apipe)) {                                         //Check if the pipeline has to wait before being execute or not (because now we don't have one)
-        waitpid(pid, NULL, 0);
+        pid = fork();
+        if (pid == 0) {
+            
+            dup2(argv[STD_IN], STDIN_FILENO);
+            close(argv[STD_IN]);
+            //close(argv[STD_OUT]);
+            /*
+            if (dup2(argv[STD_IN], STDIN_FILENO) == -1) {
+            printf("Error, error with dup2\n");
+            exit(EXIT_FAILURE);
+            }
+            if (close(argv[STD_IN]) == -1) {
+                printf("Error, error with file descriptor\n");
+                exit(EXIT_FAILURE);
+            }*/
+            pipeline_pop_front(apipe);
+            execute_extern(pipeline_front(apipe));
+        } else if (pid > 0) {
+            close(argv[STD_IN]);
+        }
     }
+    wait(NULL);
+    wait(NULL);
+    //if (pipeline_get_wait(apipe)) {                                         //Check if the pipeline has to wait before being execute or not (because now we don't have one)
+    //    waitpid(pid, NULL, 0);
+    //}
 }
-*/
+
 
 
 
@@ -147,7 +191,8 @@ void execute_pipeline(pipeline apipe) {
     //} else if (pipeline_length(apipe) == 2) {                               //If pipeline_length == 2 then call the function to execute two pipelines
     //    execute_double_pipeline(apipe);
     } else {                                                                //Else error => don't have execute_pipeline for multiple pipelines
-        printf("Invalid input\n");
-        return;
+        execute_multiple_pipeline(apipe);
+        //printf("Invalid input\n");
+        //return;
     }
 }
