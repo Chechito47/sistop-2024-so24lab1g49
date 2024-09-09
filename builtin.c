@@ -15,13 +15,12 @@ char *internal[COUNT_INTERNAL] = {"cd", "help", "exit"};    //lista de comandos 
 bool builtin_is_internal(scommand cmd)
 {
     assert(cmd != NULL);
-    char *command = scommand_front(cmd);                    //toma el comando
+    //char *command = scommand_front(cmd);                    //toma el comando
     for (unsigned int i = 0u; i < COUNT_INTERNAL; i++)      //busca si está en la lista de comandos simples
     {
-        if (command == internal[i])
-        {
-            return true;                                    //si lo encuentra retorna true
-        }
+        if (!strcmp(scommand_front(cmd), internal[i])){
+            return true;
+    }
     }
 
     return false;                                           //si no lo encuentra en la lista retorna false
@@ -30,9 +29,9 @@ bool builtin_is_internal(scommand cmd)
 bool builtin_alone(pipeline p)
 {
     assert(p != NULL);
-    assert(pipeline_length(p) == 1 && builtin_is_internal(pipeline_front(p)));
+    return (pipeline_length(p) == 1 && builtin_is_internal(pipeline_front(p)));
 
-    return true;
+    //return true;
 }
 
 void builtin_run(scommand cmd)
