@@ -7,8 +7,6 @@
 #include <fcntl.h>                      //For open
 #include <unistd.h>                     //For dup2 and close
 #include <sys/wait.h>                   //For wait
-//#include <sys/types.h>
-//#include <sys/stat.h>
 
 #include "builtin.h"
 #include "command.h"
@@ -34,7 +32,7 @@ x:y:xs (con xs!=[]) -> execute_multiple_scommand -> crear un pipe, hacer el fork
 
 //Execute a command as extern (if is not builtin) without making fork
 //Requires: comm!=NULL && scommand_is_empty(comm)==False
-static void execute_extern(scommand comm) {
+static void execute_external(scommand comm) {
     assert(comm != NULL && !scommand_is_empty(comm));                       //Assert conditions
     unsigned int comm_length = scommand_length(comm);                       //Get the length of string
     char **arg_list = calloc(comm_length + 1, sizeof(char*));               //+1 due the use of **arg_list
@@ -62,11 +60,11 @@ static void execute_extern(scommand comm) {
             fprintf(stderr, "Error: file or directory '%s' doesn't exists\n", redir_out);
             exit(EXIT_FAILURE);
         }
-        dup2(fd_redir_out, 1);                                              //Redirect the content of fd_redir_out to stdout
+        dup2(fd_redir_out, STD_OUT);                                        //Redirect the content of fd_redir_out to stdout
         close(fd_redir_out);
     }
 
-    if (execvp(arg_list[0], arg_list) == -1) {                              //If couldn't change the execution of the process => error
+    if (execvp(arg_list[STD_IN], arg_list) == -1) {                         //If couldn't change the execution of the process => error
         fprintf(stderr, "Error: command '%s' not found\n", arg_list[0]);
         exit(EXIT_FAILURE);
     }
@@ -82,22 +80,22 @@ static void execute_extern(scommand comm) {
 static void execute_single_pipeline(pipeline apipe) {
     assert(apipe != NULL && pipeline_length(apipe) == 1);                   //Check assert
     pid_t pid = fork();                                                     //Make fork, used pid_t because that's the type for pids
-    unsigned int child_quantity = 0;                                        //Count childs
+    //unsigned int child_quantity = 0;                                        //Count childs
 
     if (pid < 0) {                                                          //If pid<0 =>error
         printf("Error: fork failed\n");
         exit(EXIT_FAILURE);
     } else if (pid == 0) {                                                  //If pid==0 is the child
-        execute_extern(pipeline_front(apipe));
+        execute_external(pipeline_front(apipe));
     } else {
             if (pipeline_get_wait(apipe)) {                                 //If pid>0 it's the parent
             wait(NULL);                                                     //The parent wait for the child to end his execution. waitpid(pid, NULL, 0);
         }
-        child_quantity++;
-        pipeline_pop_front(apipe);                                          //Takes out the simple command
+        //child_quantity++;
+        //pipeline_pop_front(apipe);                                        //Takes out the simple command
     }
-    //pipeline_pop_front(apipe);
-    assert(child_quantity == 1);
+    pipeline_pop_front(apipe);                                              //Takes out the simple command
+    //assert(child_quantity == 1);
 }
 
 
@@ -106,7 +104,6 @@ static void execute_single_pipeline(pipeline apipe) {
 //Requires: apipe!=NULL && apipe length(apipe)>=2
 static void execute_multiple_pipeline(pipeline apipe) {
     assert(apipe != NULL && pipeline_length(apipe) >= 2);
-    //unsigned int length_pipe = pipeline_length(apipe);
     int argv[2];                                                            //Declarate argv to make execvp
 
     if (pipe(argv) < 0) {                                                   //Check if pipe fail
@@ -122,49 +119,25 @@ static void execute_multiple_pipeline(pipeline apipe) {
         exit(EXIT_FAILURE);
     }
     if (pid == 0) {                                                         //If pid==0 => it's the child
-        close(argv[STD_IN]);                                                //Don't understand why stdin open here but we need to close it, otherwise fail in make test
-        dup2(argv[STD_OUT], STD_OUT);                                       //Redirect output to stdout, STD_OUT=1 
+        close(argv[STD_IN]);                                                //Close stdin because we are not going to use it here
+        dup2(argv[STD_OUT], STD_OUT);                                       //Think argv as fd, redirect output to stdout, STD_OUT=1
         close(argv[STD_OUT]);                                               //Close stdout
-        /*
-        if (dup2(argv[STD_OUT], STDOUT_FILENO) == -1) {
-            printf("Error, error with dup2\n");
-            exit(EXIT_FAILURE);
-        }
-        if (close(argv[STD_OUT]) == -1) {
-            printf("Error, error with file descriptor\n");
-            exit(EXIT_FAILURE);
-        }*/
-        execute_extern(pipeline_front(apipe));                              //Execute the simple command of front as an external
+        execute_external(pipeline_front(apipe));                              //Execute the simple command of front as an external
         pipeline_pop_front(apipe);                                          //After execute the command of front, take it out
     } else if (pid > 0) {                                                   //If pid>0 => it's the parent
-        close(argv[STD_OUT]);                                               //Don't understand why stdout open here but we need to close it, otherwise fail in make test
-
+        close(argv[STD_OUT]);                                               //If it's the parent close stdout because here we are not going to use it
         pid = fork();
         if (pid == 0) {
-
             dup2(argv[STD_IN], STD_IN);                                     //Redirect input to stdin, STD_IN=0
             close(argv[STD_IN]);                                            //Close stdin
-            //close(argv[STD_OUT]);
-            /*
-            if (dup2(argv[STD_IN], STDIN_FILENO) == -1) {
-            printf("Error, error with dup2\n");
-            exit(EXIT_FAILURE);
-            }
-            if (close(argv[STD_IN]) == -1) {
-                printf("Error, error with file descriptor\n");
-                exit(EXIT_FAILURE);
-            }*/
             pipeline_pop_front(apipe);                                      //Order change due it's not the front command
-            execute_extern(pipeline_front(apipe));
+            execute_external(pipeline_front(apipe));
         } else if (pid > 0) {
-            close(argv[STD_IN]);
+            close(argv[STD_IN]);                                            //If it's the parent close stdin, because firtsly we closed stdout, now stdin
         }
     }
+    wait(NULL);                                                             //Parents wait for childs
     wait(NULL);
-    wait(NULL);
-    //if (pipeline_get_wait(apipe)) {                                       //Check if the pipeline has to wait before being execute or not (because now we don't have one)
-    //    waitpid(pid, NULL, 0);
-    //}
 }
 
 
@@ -174,10 +147,9 @@ static void execute_multiple_pipeline(pipeline apipe) {
 //  Execute internal command
 //  Execute one external command
 //  Execute multiple external command chained by a pipe
-//Requires: cmd!=NULL && pipeline_length(apipe)>3
+//Requires: cmd!=NULL
 void execute_pipeline(pipeline apipe) {
     assert(apipe != NULL);                                                  //Check assert
-
     if (pipeline_is_empty(apipe)) {                                         //If not pipeline => go back to wait for an input 
         printf("Error: blank input\n");
         return;

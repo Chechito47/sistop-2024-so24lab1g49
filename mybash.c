@@ -8,20 +8,20 @@
 #include "parser.h"
 #include "parsing.h"
 #include "builtin.h"
-#include "limits.h"
+#include "limits.h"                             //IDEM as #include <linux/limits.h>, it's for PATH_MAX
 #include "obfuscated.h"
 
 static void show_prompt(void) {
     //Print <mybash>:
-    printf ("\x1b[40m");                        //
-    printf ("\x1b[36m");
+    printf ("\x1b[40m");                        //Background black
+    printf ("\x1b[36m");                        //Cyan color
     printf ("<mybash>");
-    printf ("\033[0m");
+    printf ("\033[0m");                         //Reset color and format
     printf (":");
-    char dir[PATH_MAX];
-    if (getcwd(dir, sizeof(dir)) != NULL) {
+    char dir[PATH_MAX];                         //Define a char for directory
+    if (getcwd(dir, sizeof(dir)) != NULL) {     //If getcwd(used to get actual directory path, with the size of dir) is not null (null if error) then print it
         //Print ~actual directory
-        printf ("\x1b[33m");
+        printf ("\x1b[33m");                    //Yellow color
         printf("~%s", dir);
         printf ("\033[0m");
         printf ("$ ");

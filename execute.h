@@ -7,7 +7,7 @@
 
 #include "command.h"
 
-//static void execute_extern(scommand comm);
+//static void execute_external(scommand comm);
 /*
  * Ejecuta un comando como externo haciendo una llamada a su funcion, 
  *   redirigiendo la entrada y salida. Puede modificar `apipe' en el proceso

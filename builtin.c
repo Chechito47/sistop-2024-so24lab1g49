@@ -25,7 +25,7 @@ bool builtin_is_internal(scommand cmd) {
 
 bool builtin_alone(pipeline p) {
     assert(p != NULL);
-    return (pipeline_length(p) == 1 && builtin_is_internal(pipeline_front(p)));
+    return (pipeline_length(p) == 1 && builtin_is_internal(pipeline_front(p)));//ensure
 }
 
 void builtin_run(scommand cmd) {
