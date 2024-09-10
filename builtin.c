@@ -9,29 +9,23 @@
 #include "builtin.h"
 #include "tests/syscall_mock.h"
 
-#define COUNT_INTERNAL 3                                    //cantidad de comandos internos
-char *internal[COUNT_INTERNAL] = {"cd", "help", "exit"};    //lista de comandos simples
+#define COUNT_INTERNAL 3                                        //cantidad de comandos internos
+char *internal[COUNT_INTERNAL] = {"cd", "help", "exit"};        //lista de comandos simples
 
-bool builtin_is_internal(scommand cmd)
-{
+bool builtin_is_internal(scommand cmd) {
     assert(cmd != NULL);
-    //char *command = scommand_front(cmd);                    //toma el comando
-    for (unsigned int i = 0u; i < COUNT_INTERNAL; i++)      //busca si está en la lista de comandos simples
-    {
-        if (!strcmp(scommand_front(cmd), internal[i])){
+    //char *command = scommand_front(cmd);                      //toma el comando
+    for (unsigned int i = 0u; i < COUNT_INTERNAL; i++) {        //busca si está en la lista de comandos simples
+        if (!strcmp(scommand_front(cmd), internal[i])) {
             return true;
+        }
     }
-    }
-
-    return false;                                           //si no lo encuentra en la lista retorna false
+    return false;                                               //si no lo encuentra en la lista retorna false
 }
 
-bool builtin_alone(pipeline p)
-{
+bool builtin_alone(pipeline p) {
     assert(p != NULL);
     return (pipeline_length(p) == 1 && builtin_is_internal(pipeline_front(p)));
-
-    //return true;
 }
 
 void builtin_run(scommand cmd) {
@@ -42,7 +36,6 @@ void builtin_run(scommand cmd) {
         scommand_pop_front(cmd);                                //quitamos el "cd"
         chdir(scommand_front(cmd));                             //cambiamos al directorio a la ruta que brinda el usuario
     } else if (strcmp(command, internal[1]) == 0) {             //comando help: imprime un texto plano con información
-        //printf("Bienvenido a MyBash! \n Autores: Equipo Alfa Dinamita \n Lista de comandos internos: \n cd: Cambio de directorio \n help: Breve explicacion de comandos internos y otras especificaciones \n exit: salir de consola\n");
         //Bienvenida
         printf("\x1b[31m");                                     //Red color
         printf("\x1b[4m");                                      //Underline style
@@ -63,7 +56,7 @@ void builtin_run(scommand cmd) {
         printf("\x1b[31m");
         printf("Lista de comandos internos:\n");
             printf("\x1b[1m");                                  //Bold style
-            printf("\x1b[34m");                                  //Blue color
+            printf("\x1b[34m");                                 //Blue color
             printf("  *  ");
             printf("\x1b[36m");                                 //Cyan color
             printf("cd");
@@ -85,9 +78,6 @@ void builtin_run(scommand cmd) {
             printf("exit");
             printf("\x1b[0m");
             printf(": salir de consola\n");
-        //printf("  *  cd: Cambio de directorio\n");
-        //printf("  *  help: Breve explicacion de comandos internos y otras especificaciones\n");
-        //printf("  *  exit: salir de consola\n");
     } else if (strcmp(command, internal[2]) == 0) {             //comando exit: mensaje de despedida y termina el ejecutable mybash
         printf("\x1b[32m");
         printf("Adios, vuelva prontos...\n");
