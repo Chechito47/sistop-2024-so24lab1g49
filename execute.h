@@ -7,28 +7,36 @@
 
 #include "command.h"
 
-//void execute_extern(scommand comm);
-void execute_pipeline(pipeline apipe);
+//static void execute_extern(scommand comm);
 /*
- * Ejecuta un como externo sin hacer fork
- *   redirigiendo la entrada stdin y salida stdout
- * Requires: comm!=NULL && scommand_is_empty(comm)==False
+ * Ejecuta un comando como externo haciendo una llamada a su funcion, 
+ *   redirigiendo la entrada y salida. Puede modificar `apipe' en el proceso
+ *   de ejecución.
+ *   apipe: pipeline a ejecutar
+ * Requires: apipe!=NULL && !scommand_is_empty(comm)
  */
 
-//void execute_single_pipeline(pipeline apipe);
+//static void execute_single_pipeline(pipeline apipe);
 /*
- * Ejecuta un pipeline, identificando comandos internos, forkeando, y
+ * Ejecuta comandos con un pipeline, forkeando, y
  *   redirigiendo la entrada y salida. puede modificar `apipe' en el proceso
  *   de ejecución.
  *   apipe: pipeline a ejecutar
- * Requires: apipe!=NULL
+ * Requires: apipe!=NULL && pipeline_length(apipe) == 1
  */
 
-//void execute_double_pipeline(pipeline apipe);
-/*
- * Ejecuta dos pipeline, identificando comandos internos, forkeando, y
+//static void execute_multiple_pipeline(pipeline apipe);
+ /*
+ * Ejecuta comandos con multiples pipelines, forkeando, y
  *   redirigiendo la entrada y salida. puede modificar `apipe' en el proceso
  *   de ejecución.
+ *   apipe: pipeline a ejecutar
+ * Requires: apipe!=NULL && pipeline_length(apipe) >= 1
+ */
+
+void execute_pipeline(pipeline apipe);
+/*
+ * Decide a que funcion llamar para su correcta ejecucion segun el tipo de cadena
  *   apipe: pipeline a ejecutar
  * Requires: apipe!=NULL
  */
