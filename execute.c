@@ -69,7 +69,7 @@ static void execute_extern(scommand comm) {
     //free(redir_in);                                                       //Free redir_in and out from memory
     //free(redir_out);
     if (execvp(arg_list[0], arg_list) == -1) {                              //If replace the process failed
-        fprintf(stderr, "Error: invalid command '%s'\n", arg_list[0]);
+        fprintf(stderr, "Error: command '%s' not found\n", arg_list[0]);
         exit(EXIT_FAILURE);
     }
     free(redir_in);
